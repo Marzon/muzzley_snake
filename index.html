@@ -1,0 +1,445 @@
+
+<html>
+<head>
+<title>Muzzley - Snake Multiplayer</title>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+<script src="muzzley-client-0.3.0.js" type="text/javascript"></script>
+<script src="leap.js" type="text/javascript"></script>
+<script>
+var debug=false;
+var colors = ['blue','red','yellow','black','gray'];
+var isSwipe = 1;
+
+// store witch array position for each participant
+var participants_array_position = [];
+
+$(document).ready(function(){
+
+$( document ).bind( 'keydown', function ( event ) {
+
+    var keys = [32, 33, 34, 35, 36, 37, 38, 39, 40, 44];
+
+    if( keys.indexOf( event.which ) > -1 ) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+    };
+
+} );
+
+
+	var snakes = [];
+
+	//Canvas stuff
+	var d = [];
+	var players = [];
+
+	var canvas = $("#canvas")[0];
+	var ctx = canvas.getContext("2d");
+	var w = $("#canvas").width();
+	var h = $("#canvas").height();
+	
+	//Lets save the cell width in a variable for easy control
+	var cw = 10;
+	var food;
+	var scores;
+	//Lets create the snake now
+	//var snake_array; //an array of cells to make up the snake
+	
+	function init()
+	{
+		// remove all snakes
+		snakes = [];
+		scores = [];
+		d = [];
+		d.push("right"); //default direction
+		create_snake();
+		create_food(); //Now we can see the food particle
+		
+		// create default player
+		players.push({name:'Keyboard',photo:''});
+		
+		//Lets move the snake now using a timer which will trigger the paint function
+		//every 60ms
+		if(typeof game_loop != "undefined") clearInterval(game_loop);
+		game_loop = setInterval(paint, 60);
+	}
+	init();
+
+	function restart()
+	{
+		
+		// restart scores and snakes
+		for (var i=0;i<players.length;i++) {
+			scores[i]=0;
+			snakes[i]=create_snake_body();
+			d[i] = "right";
+		}
+	}
+
+	
+	function show_winner(who_made_a_mistake) {
+		var winner = 0;
+		var biggest_score = 0;
+		for (var i=0;i<players.length;i++) {
+			if (scores[i]>biggest_score) {
+			   biggest_score = scores[i];
+			   winner = i;
+			}
+		}
+		alert("Best Score: "+players[winner].name+" - Who made a mistake: "+players[who_made_a_mistake].name);
+	}
+		
+	
+	function create_snake_body() {
+		var length = 5; //Length of the snake
+		var snake_array = []; //Empty array to start with
+		for(var i = length-1; i>=0; i--)
+		{
+			//This will create a horizontal snake starting from the top left
+			snake_array.push({x: i, y:0});
+		}
+		return snake_array;
+	}
+	
+	function create_snake()
+	{
+		snakes.push(create_snake_body());
+		// create score
+		scores.push(0);
+		// create direction
+		d.push("right");
+		return snakes.length-1;
+	}
+	
+	//Lets create the food now
+	function create_food()
+	{
+		food = {
+			x: Math.round(Math.random()*(w-cw)/cw), 
+			y: Math.round(Math.random()*(h-cw)/cw), 
+		};
+		//This will create a cell with x/y between 0-44
+		//Because there are 45(450/10) positions accross the rows and columns
+	}
+	
+	//Lets paint the snake now
+	function paint()
+	{
+	
+		for (var jk = 0;jk<snakes.length;jk++) {
+			var snake_array = snakes[jk];
+			//The movement code for the snake to come here.
+			//The logic is simple
+			//Pop out the tail cell and place it infront of the head cell
+			var nx = snake_array[0].x;
+			var ny = snake_array[0].y;
+			//These were the position of the head cell.
+			//We will increment it to get the new head position
+			//Lets add proper direction based movement now
+			if(d[jk] == "right") nx++;
+			else if(d[jk] == "left") nx--;
+			else if(d[jk] == "up") ny--;
+			else if(d[jk] == "down") ny++;
+			
+			//Lets add the game over clauses now
+			//This will restart the game if the snake hits the wall
+			//Lets add the code for body collision
+			//Now if the head of the snake bumps into its body, the game will restart
+			//if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_collision(nx, ny, snake_array))
+			if(check_collision(nx, ny, snake_array))
+			{
+				// show winner
+				show_winner(jk);
+				//To avoid the snake trail we need to paint the BG on every frame
+				//Lets paint the canvas now
+				ctx.fillStyle = "white";
+				ctx.fillRect(0, 0, w, h);
+				ctx.strokeStyle = "black";
+				ctx.strokeRect(0, 0, w, h);
+				//restart game
+				restart();
+				//Lets organize the code a bit now.
+				return;
+			}
+		}
+		//To avoid the snake trail we need to paint the BG on every frame
+		//Lets paint the canvas now
+		ctx.fillStyle = "white";
+		ctx.fillRect(0, 0, w, h);
+		ctx.strokeStyle = "black";
+		ctx.strokeRect(0, 0, w, h);
+
+		
+		// for each snake 
+		for (var j = 0;j<snakes.length;j++) {
+			var snake_array = snakes[j];
+			//The movement code for the snake to come here.
+			//The logic is simple
+			//Pop out the tail cell and place it infront of the head cell
+			var nx = snake_array[0].x;
+			var ny = snake_array[0].y;
+			//These were the position of the head cell.
+			//We will increment it to get the new head position
+			//Lets add proper direction based movement now
+			if(d[j] == "right") nx++;
+			else if(d[j] == "left") nx--;
+			else if(d[j] == "up") ny--;
+			else if(d[j] == "down") ny++;
+			
+			//Lets add the game over clauses now
+			//This will restart the game if the snake hits the wall
+			//Lets add the code for body collision
+			//Now if the head of the snake bumps into its body, the game will restart
+			//if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_collision(nx, ny, snake_array))
+			/*if(check_collision(nx, ny, snake_array))
+			{
+				// show winner
+				show_winner(j);
+				//restart game
+				restart();
+				//Lets organize the code a bit now.
+				return;
+			}*/
+
+			
+			//nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || 
+			
+			if (nx == -1) {
+				nx = w/cw-1;
+			}
+			if (ny == -1) {
+				ny = h/cw-1;
+			}
+			if (nx == w/cw) {
+				nx = 0;
+			}
+			if (ny == h/cw) {
+				ny = 0;
+			}
+			
+			//Lets write the code to make the snake eat the food
+			//The logic is simple
+			//If the new head position matches with that of the food,
+			//Create a new head instead of moving the tail
+			if(nx == food.x && ny == food.y)
+			{
+				var tail = {x: nx, y: ny};
+				scores[j]++;
+				//Create new food
+				create_food();
+			}
+			else
+			{
+				var tail = snake_array.pop(); //pops out the last cell
+				tail.x = nx; tail.y = ny;
+			}
+			//The snake can now eat the food.
+			
+			snake_array.unshift(tail); //puts back the tail as the first cell
+			
+			for(var i = 0; i < snake_array.length; i++)
+			{
+				var c = snake_array[i];
+				//Lets paint 10px wide cells
+				paint_cell(c.x, c.y,j);
+			}
+		}
+		//Lets paint the food
+		paint_cell(food.x, food.y,0);
+		//Lets paint the score
+		paint_players();
+	}
+	
+	//Lets first create a generic function to paint cells
+	function paint_cell(x, y, color)
+	{
+		ctx.fillStyle = colors[color];
+		ctx.fillRect(x*cw, y*cw, cw, cw);
+		ctx.strokeStyle = "white";
+		ctx.strokeRect(x*cw, y*cw, cw, cw);
+	}
+	
+	function paint_players()
+	{
+		
+		for(var i = 0; i < players.length; i++)
+		{
+			var y_position = h-(15*i+5);
+			var score_text = players[i].name+" - Score: " + scores[i];
+			ctx.fillText(score_text, 5, y_position);
+			/*var imageObj = new Image();
+			imageObj.onload = function() {
+				context.drawImage(imageObj, 5, h-(10*(i+1)+10),10,10);
+			};
+			imageObj.src = players.photo;
+			
+			ctx.fillStyle = "blue";
+			ctx.fillRect(5, y_position-cw, cw, cw);
+			ctx.strokeStyle = "white";
+			ctx.strokeRect(5, y_position-cw, cw, cw);
+			*/
+		}
+	}
+	
+	function check_collision(x, y, array)
+	{
+		//This function will check if the provided x/y coordinates exist
+		//in an array of cells or not
+		for(var i = 0; i < array.length; i++)
+		{
+			if(array[i].x == x && array[i].y == y)
+			 return true;
+		}
+		return false;
+	}
+	
+	//Lets add the keyboard controls now
+	$(document).keydown(function(e){
+		var key = e.which;
+		//We will add another clause to prevent reverse gear
+		if (debug) console.log(key);
+		if(key == "37" && d[0] != "right") d[0] = "left";
+		else if(key == "38" && d[0] != "down") d[0] = "up";
+		else if(key == "39" && d[0] != "left") d[0] = "right";
+		else if(key == "40" && d[0] != "up") d[0] = "down";
+		//The snake is now keyboard controllable
+	})
+
+// MUZZLEY
+  var myAppToken = '229635777f3d3cfc';
+
+   muzzley.on('error', function(err) {
+        console.log("Error: " + err);
+      });
+
+      muzzley.connectApp(myAppToken, function(err, activity) {
+        if (err) return console.log("Connect error: " + err);
+
+        // Usually you'll want to show this Activity's QR code image
+        // or its id so that muzzley users can join.
+        // They are in the `activity.qrCodeUrl` and `activity.activityId`
+        // properties respectively.
+        if (debug) console.log(activity);
+        document.getElementById('qrCodeContainer').src = activity.qrCodeUrl;
+
+        activity.on('participantQuit', function(participant) {
+          // A participant quit
+        });
+
+        activity.on('participantJoin', function(participant) {
+		  addPlayer(participant);
+          // A participant joined. Tell him to transform into a gamepad.
+          participant.changeWidget('swipeNavigator', function (err) {
+            if (err) return console.log("ChangeWidget error: " + err );
+          });
+
+          participant.on('action', function (action) {
+            // The action object represents the participant's interaction.
+            // In this case it might be "button 'a' was pressed".
+            if (debug) console.log(action);
+			
+			// 270 - 40 - down - b
+			// 0 - 39 - right - c
+			// 90 - 38 - up - d
+			// 180 - 37 - left - a
+			
+			// get array position by name
+			var position = 0;
+			for (var i = 0;i<participants_array_position.length;i++) {
+			  if (participant.name == participants_array_position[i].name) {
+				position = participants_array_position[i].a_position;
+			  }
+			}
+			
+			if(action.c == 'swipe' && action.v == 'l' && d[position] != "right") d[position] = "left";
+			else if(action.c == 'swipe' && action.v == 'u' && d[position] != "down") d[position] = "up";
+			else if(action.c == 'swipe' && action.v == 'r' && d[position] != "left") d[position] = "right";
+			else if(action.c == 'swipe' && action.v == 'd' && d[position] != "up") d[position] = "down";
+	
+			if(action.c == 'ba' && action.v == 'a' && d[position] != "right") d[position] = "left";
+			else if(action.c == 'bd' && action.v == 'd' && d[position] != "down") d[position] = "up";
+			else if(action.c == 'bc' && action.v == 'c' && d[position] != "left") d[position] = "right";
+			else if(action.c == 'bb' && action.v == 'b' && d[position] != "up") d[position] = "down";
+
+
+			
+			if(action.c == 'jl' && action.v == '180' && d[position] != "right") d[position] = "left";
+			else if(action.c == 'jl' && action.v == '90' && d[position] != "down") d[position] = "up";
+			else if(action.c == 'jl' && action.v == '0' && d[position] != "left") d[position] = "right";
+			else if(action.c == 'jl' && action.v == '270' && d[position] != "up") d[position] = "down";
+		  });
+
+          participant.on('quit', function (action) {
+            // You can also check for participant quit events
+            // directly in each participant object.
+          });
+
+        });
+      });
+  
+	function addPlayer(participant) {
+		players.push({name: participant.name, photo:participant.photoUrl});
+		var position = create_snake();
+		participants_array_position.push({name: participant.name, a_position:position, original:participant});
+	}	
+	
+})
+
+
+	function changeWidget() {
+		for (var i = 0;i<participants_array_position.length;i++) {
+			  var newWidget = "";
+			  if (isSwipe) {
+				newWidget = "gamepad";
+				isSwipe = 0;
+			  } else {
+				newWidget = "swipeNavigator";
+				isSwipe = 1;
+			  }
+			  participants_array_position[i].original.changeWidget(newWidget, function (err) {
+					if (err) return console.log("ChangeWidget error: " + err );
+				});
+	    }
+	}
+</script>
+</head>
+<body style="font-family:Verdana">
+<!-- Lets make a simple snake game -->
+<div style="float:left;padding:10px;">
+<canvas id="canvas" width="450" height="450"></canvas></div>
+
+
+<div >
+<div style="font-size:8pt;text-align: right;"><a href="http://www.mzn.com.br/snake/index.html" target="_blank">Open new window</a></div>
+<br/><b>Snake Multiplayer using Muzzley using Swipe</b><br/><br/>
+You can use keyboard arrows for the first Player and Muzzley GamePad for the others!!!<br/>
+<br/>
+Try it now! You don't know Muzzley yet? <a target="blank" href="http://www.muzzley.com">Click here right now!!</a><br/><br/>
+Simple and amazing:<br/>
+1o.) Get the iPhone app: <a target="blank" href="https://itunes.apple.com/us/app/muzzley/id604133373" id="downloadIphone"><img src="appStore.png"/></a> <br/>
+2o.) Scan the QRCode below using Muzzley app to create a new player and enjoy!!<br/>
+ <img id="qrCodeContainer">
+ <br/><br/>
+ <div id="winner"></div>
+ 
+ </div>
+<a href="#" onclick="javascript:changeWidget();return false;" >Try other Muzzley Widget</a> <br/>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-40022881-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+<div style="font-size:10px"> <br/>Created by <a target="blank" href="http://www.about.me/marzon">Marzon Castilho</a><br/> 
+Game based on code of <a target="blank" href="http://twitter.com/ruby_on_tails" >ruby_on_tails</a>
+</body>
+</html>
